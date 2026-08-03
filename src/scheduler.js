@@ -14,7 +14,7 @@ export function startScheduler() {
     console.log("⏰ Scheduler started.");
 
     // Every minute (change to */5 later)
-    cron.schedule("*/1 * * * *", async () => {
+    cron.schedule("*/10 * * * * *", async () => {
 
         console.log("\n================================");
         console.log("🔍 Checking for new leads...");
