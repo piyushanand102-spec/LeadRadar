@@ -1,9 +1,5 @@
-import { sendTelegramMessage } from "./services/telegram/sendTelegram.js";
+import { startScheduler } from "./scheduler.js";
 
-console.log("🚀 Testing Telegram...");
+console.log("🚀 LeadRadar Started\n");
 
-await sendTelegramMessage(
-`🔥 LeadRadar Test
-
-If you received this message, Telegram is connected successfully.`
-);
+startScheduler();

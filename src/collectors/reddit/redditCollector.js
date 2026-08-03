@@ -1,66 +1,49 @@
-import { filterPosts } from "../../filters/keywordFilter.js";
-import Parser from "rss-parser";
+import { REDDIT_FEEDS } from "../../../config/feeds.js";
 
-const parser = new Parser();
+import { fetchFeed } from "./fetchFeed.js";
+import { normalize } from "./normalize.js";
+import { timeFilter } from "./timeFilter.js";
+import { keywordFilter } from "./keywordFilter.js";
 
-const RSS_URL = "https://www.reddit.com/r/NewTubers/.rss";
-const MAX_POST_AGE_MINUTES = 60;
+export async function redditCollector() {
 
-export async function testCollector() {
-    console.log("🚀 Starting Reddit Collector...\n");
+    let allPosts = [];
 
-    try {
-        console.log("📡 Fetching RSS feed...\n");
+    console.log("\n===============================");
+    console.log("Starting Reddit Collector...");
+    console.log("===============================\n");
 
-        const feed = await parser.parseURL(RSS_URL);
+    for (const feedUrl of REDDIT_FEEDS) {
 
-        // Convert RSS items into our standard format
-        const posts = feed.items.map((post) => ({
-            title: post.title || "No Title",
-            link: post.link,
-            published: new Date(post.pubDate),
-            author: post.creator || post.author || "Unknown"
-        }));
+        console.log(`Fetching: ${feedUrl}`);
 
-        // Calculate cutoff time
-        const cutoffTime = Date.now() - MAX_POST_AGE_MINUTES * 60 * 1000;
+        const feed = await fetchFeed(feedUrl);
 
-        // Keep only recent posts
-        const recentPosts = posts.filter(
-    (post) => post.published.getTime() >= cutoffTime
-);
-
-const freshPosts = filterPosts(recentPosts);
-
-        console.log(`📂 Subreddit: ${feed.title}`);
-        console.log(`📊 Total Posts Fetched: ${posts.length}`);
-        console.log(`📰 Total RSS Posts : ${posts.length}`);
-console.log(`🕒 Recent Posts    : ${recentPosts.length}`);
-console.log(`🎯 Hiring Leads    : ${freshPosts.length}\n`);
-
-        if (freshPosts.length === 0) {
-            console.log("❌ No fresh hiring posts found.");
-            return;
+        if (!feed) {
+            console.log("Failed to fetch feed.\n");
+            continue;
         }
 
-        console.log("========================================");
+        const posts = normalize(feed);
 
-        freshPosts.forEach((post, index) => {
-            const minutesAgo = Math.floor(
-                (Date.now() - post.published.getTime()) / 60000
-            );
+        console.log(`${feed.title}`);
+        console.log(`Posts fetched: ${posts.length}\n`);
 
-            console.log(`\n#${index + 1}`);
-            console.log(`📝 Title      : ${post.title}`);
-            console.log(`👤 Author     : ${post.author}`);
-            console.log(`⏰ Posted     : ${minutesAgo} minutes ago`);
-            console.log(`🔗 Link       : ${post.link}`);
+        allPosts.push(...posts);
 
-            console.log("----------------------------------------");
-        });
-
-    } catch (error) {
-        console.error("❌ Failed to fetch Reddit RSS.");
-        console.error(error.message);
+        // Prevent Reddit rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
+
+    console.log("================================");
+    console.log(`Total Posts Collected : ${allPosts.length}`);
+
+    const recentPosts = timeFilter(allPosts);
+    console.log(`Recent Posts : ${recentPosts.length}`);
+
+    const hiringPosts = keywordFilter(recentPosts);
+    console.log(`Hiring Leads : ${hiringPosts.length}`);
+    console.log("================================\n");
+
+    return hiringPosts;
 }
